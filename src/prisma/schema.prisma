@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Durum (Status) ve Öncelik (Priority) için Enum Tanımlamaları
+// Bu yapı, değerleri sadece belirttiğiniz seçeneklerle kısıtlar.
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Role {
+  USER
+  AGENT
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  password        String    
+  role            Role      @default(USER)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Bir kullanıcının oluşturduğu biletler
+  createdTickets  Ticket[]  @relation("TicketCreator")
+  
+  // Bir temsilciye (kullanıcıya) atanan biletler
+  assignedTickets Ticket[]  @relation("TicketAssignee")
+  
+  // Bir kullanıcının yazdığı yorumlar
+  comments        Comment[]
+}
+
+model Ticket {
+  id          Int            @id @default(autoincrement())
+  title       String
+  description String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(LOW)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // 1. Bileti oluşturan kullanıcı (Zorunlu FK)
+  createdBy   User           @relation("TicketCreator", fields: [createdById], references: [id])
+  createdById Int
+
+  // 2. Bilete atanan temsilci (İsteğe bağlı FK - '?')
+  assignedTo  User?          @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  assignedToId Int?
+
+  // Bu biletin altındaki yorumlar
+  comments    Comment[]
+}
+
+model Comment {
+  id          Int      @id @default(autoincrement())
+  content     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Bu yorumun ait olduğu bilet (FK)
+  ticket      Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId    Int
+
+  // Bu yorumu yazan kullanıcı (FK)
+  author      User     @relation(fields: [authorId], references: [id])
+  authorId    Int
+}
+// USER -> TICKETS -> COMMENTS
